@@ -24,4 +24,4 @@ struct InputState {
     bool search_prev = false;
 };
 
-InputState process_events(nk_context* ctx, EditorState& state);
+InputState process_events(nk_context* ctx, EditorState& state, SDL_Event* first_event = nullptr);

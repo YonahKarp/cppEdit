@@ -56,7 +56,7 @@ void delete_file(EditorState& state, int file_index);
 
 bool render_sidebar(struct nk_context* ctx, EditorState& state,
                     int window_width, int window_height, struct nk_font* font,
-                    struct nk_font* sidebar_font);
+                    struct nk_font* sidebar_font, struct nk_font* small_font);
 
 void handle_sidebar_input(EditorState& state, SDL_Event* event);
 

@@ -54,6 +54,7 @@ struct EditorState {
     bool pending_scroll_to_cursor = false;
     int pending_navigate_to_pos = -1;
     float target_scroll_y = 0;
+    bool processed_pending_action = false;
 
     UndoState undo_state;
     bool pending_undo = false;

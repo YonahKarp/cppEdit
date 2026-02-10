@@ -96,12 +96,40 @@ int main(int argc, char** argv) {
 
     const Uint32 DEBOUNCE_DELAY = 500;
     const Uint32 RENAME_DEBOUNCE_DELAY = 200;
-    const Uint32 FRAME_RATE = 60;
+    const Uint32 BLINK_INTERVAL = 530;
 
+    bool needs_redraw = true;
 
     bool running = true;
     while (running) {
-        InputState input = process_events(app.ctx, editor);
+        bool has_selection = (editor.prev_sel_start != editor.prev_sel_end);
+        
+        bool sidebar_animating = false;
+        if (editor.sidebar.anim_start_time > 0) {
+            Uint32 elapsed = SDL_GetTicks() - editor.sidebar.anim_start_time;
+            sidebar_animating = (elapsed < SidebarState::ANIM_DURATION_MS + 50);
+        }
+
+        Uint32 wait_time;
+        if (sidebar_animating) {
+            wait_time = 1;
+        } else if (!has_selection) {
+            Uint32 time_since_blink = SDL_GetTicks() - editor.last_blink_time;
+            Uint32 time_to_next_blink = time_since_blink >= BLINK_INTERVAL ? 0 : BLINK_INTERVAL - time_since_blink;
+            wait_time = time_to_next_blink < 50 ? 1 : 50;
+        } else {
+            wait_time = 50;
+        }
+
+        SDL_Event wait_event;
+        bool had_event = SDL_WaitEventTimeout(&wait_event, wait_time);
+
+        InputState input = {};
+        if (had_event) {
+            input = process_events(app.ctx, editor, &wait_event);
+        } else {
+            input = process_events(app.ctx, editor, nullptr);
+        }
 
         if (input.quit) {
             running = false;
@@ -112,30 +140,35 @@ int main(int argc, char** argv) {
             if (editor.sidebar.visible) {
                 close_search(editor.search);
             }
+            needs_redraw = true;
         }
 
-        if (input.increase_font_size || input.decrease_font_size  ) {
+        if (input.increase_font_size || input.decrease_font_size) {
             float new_size = app.font_size + (input.increase_font_size ? App::FONT_SIZE_STEP : -App::FONT_SIZE_STEP);
             reload_fonts(app, new_size);
             editor.font_size = app.font_size;
             editor.state_pending_save = true;
             editor.state_change_time = SDL_GetTicks();
+            needs_redraw = true;
         }
 
         if (input.toggle_theme) {
             editor.dark_theme = !editor.dark_theme;
             editor.state_pending_save = true;
             editor.state_change_time = SDL_GetTicks();
+            needs_redraw = true;
         }
 
         if (input.toggle_search && !editor.sidebar.visible) {
             toggle_search(editor.search);
+            needs_redraw = true;
         }
 
         if (input.search_next && editor.search.active) {
             int pos = navigate_to_next_match(editor.search);
             if (pos >= 0) {
                 editor.pending_navigate_to_pos = pos;
+                needs_redraw = true;
             }
         }
 
@@ -143,26 +176,55 @@ int main(int argc, char** argv) {
             int pos = navigate_to_prev_match(editor.search);
             if (pos >= 0) {
                 editor.pending_navigate_to_pos = pos;
+                needs_redraw = true;
             }
         }
 
         handle_sidebar_keyboard(editor, input);
-        handle_cursor_blink(editor, input.had_input);
 
-        render_editor(app.ctx, editor, app.window_width, app.window_height, 
-                      app.font, app.status_font);
-        render_sidebar(app.ctx, editor, app.window_width, app.window_height, app.font, app.sidebar_font);
+        bool prev_cursor_visible = editor.cursor_visible;
+        handle_cursor_blink(editor, input.had_input);
+        bool cursor_changed = (prev_cursor_visible != editor.cursor_visible);
+
+        if (input.had_input) {
+            needs_redraw = true;
+        }
+        if (cursor_changed && !has_selection) {
+            needs_redraw = true;
+        }
+        if (sidebar_animating) {
+            needs_redraw = true;
+        }
+        if (editor.first_frame || editor.second_frame) {
+            needs_redraw = true;
+        }
+        if (editor.pending_select_all || editor.pending_paragraph_move != 0 || 
+            editor.pending_jump_to_end != 0 || editor.pending_delete_word ||
+            editor.pending_navigate_to_pos >= 0 || editor.pending_undo) {
+            needs_redraw = true;
+        }
+
+        if (needs_redraw) {
+            render_editor(app.ctx, editor, app.window_width, app.window_height, 
+                          app.font, app.status_font);
+            render_sidebar(app.ctx, editor, app.window_width, app.window_height, app.font, app.sidebar_font, app.status_font);
+
+            Theme theme = get_theme(editor.dark_theme);
+            SDL_SetRenderDrawColor(app.renderer, theme.background.r, theme.background.g, theme.background.b, 255);
+            SDL_RenderClear(app.renderer);
+            nk_sdl_render(NK_ANTI_ALIASING_ON);
+            SDL_RenderPresent(app.renderer);
+
+            if (editor.processed_pending_action) {
+                editor.processed_pending_action = false;
+                needs_redraw = true;
+            } else {
+                needs_redraw = false;
+            }
+        }
 
         process_pending_saves(editor, DEBOUNCE_DELAY);
         process_rename_save(editor, RENAME_DEBOUNCE_DELAY);
-
-        Theme theme = get_theme(editor.dark_theme);
-        SDL_SetRenderDrawColor(app.renderer, theme.background.r, theme.background.g, theme.background.b, 255);
-        SDL_RenderClear(app.renderer);
-        nk_sdl_render(NK_ANTI_ALIASING_ON);
-        SDL_RenderPresent(app.renderer);
-
-        SDL_Delay(1000/ FRAME_RATE);
     }
 
     flush_pending_saves(editor);

@@ -7,6 +7,8 @@
 #include <fstream>
 #include <dirent.h>
 #include <algorithm>
+#include <sys/stat.h>
+#include <ctime>
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -25,15 +27,28 @@ void scan_txt_files(EditorState& state) {
     if (!dir) return;
 
     struct dirent* entry;
+    std::vector<std::pair<std::string, time_t>> files_with_times;
+    
     while ((entry = readdir(dir)) != nullptr) {
         std::string name = entry->d_name;
         if (name.size() > 4 && name.substr(name.size() - 4) == ".txt") {
-            state.sidebar.file_list.push_back(name);
+            std::string full_path = state.user_files_dir + "/" + name;
+            struct stat file_stat;
+            time_t mod_time = 0;
+            if (stat(full_path.c_str(), &file_stat) == 0) {
+                mod_time = file_stat.st_mtime;
+            }
+            files_with_times.push_back({name, mod_time});
         }
     }
     closedir(dir);
 
-    std::sort(state.sidebar.file_list.begin(), state.sidebar.file_list.end());
+    std::sort(files_with_times.begin(), files_with_times.end(),
+              [](const auto& a, const auto& b) { return a.second > b.second; });
+    
+    for (const auto& file : files_with_times) {
+        state.sidebar.file_list.push_back(file.first);
+    }
 
     state.sidebar.selected_index = 0;
     state.sidebar.new_file_selected = false;
@@ -203,7 +218,7 @@ void delete_file(EditorState& state, int file_index) {
 
 bool render_sidebar(struct nk_context* ctx, EditorState& state,
                     int window_width, int window_height, struct nk_font* font,
-                    struct nk_font* sidebar_font) {
+                    struct nk_font* sidebar_font, struct nk_font* small_font) {
     if (!state.sidebar.visible) return false;
 
     (void)font;
@@ -211,7 +226,7 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
     Theme theme = get_theme(state.dark_theme);
 
     const int sidebar_width = 250;
-    const int item_height = 35;
+    const int item_height = 55;
 
     if (state.sidebar.anim_progress < 1.0f) {
         Uint32 elapsed = SDL_GetTicks() - state.sidebar.anim_start_time;
@@ -238,7 +253,7 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
     style.text_hover = theme.sidebar_btn_text_hover;
     style.text_active = theme.sidebar_btn_text_hover;
     style.border = 0;
-    style.rounding = 6;
+    style.rounding = 0;
     style.text_alignment = NK_TEXT_LEFT;
     style.padding = nk_vec2(10, 0);
 
@@ -334,12 +349,13 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
                  NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER)) {
 
         const int vertical_padding = 6;
+        const int search_height = 35;
         nk_layout_row_dynamic(ctx, vertical_padding, 1);
         nk_spacing(ctx, 1);
 
-        nk_layout_row_dynamic(ctx, item_height, 1);
-
         if (state.sidebar.searching) {
+            nk_layout_row_dynamic(ctx, search_height, 1);
+            
             struct nk_rect search_bounds;
             nk_widget(&search_bounds, ctx);
             struct nk_command_buffer* canvas = nk_window_get_canvas(ctx);
@@ -361,7 +377,10 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
             nk_draw_text(canvas, nk_rect(text_x, text_y, search_bounds.w - icon_size - 20, sidebar_font->handle.height),
                         display_text.c_str(), display_text.length(), &sidebar_font->handle,
                         theme.sidebar_btn_normal, theme.sidebar_btn_text);
+        nk_layout_row_dynamic(ctx, 6, 1);
+        nk_spacing(ctx, 1);
         } else {
+            nk_layout_row_dynamic(ctx, item_height, 1);
             nk_style_push_font(ctx, &sidebar_font->handle);
             struct nk_style_button* btn_style = state.sidebar.new_file_selected
                                                     ? &new_file_selected_style
@@ -419,7 +438,87 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
                         display_name = display_name.substr(0, display_name.size() - 4);
                     }
                 }
-                if (nk_button_label_styled(ctx, file_btn_style, display_name.c_str())) {
+                
+                std::string file_path = state.user_files_dir + "/" + display_list[i];
+                
+                struct stat file_stat;
+                std::string date_str;
+                if (stat(file_path.c_str(), &file_stat) == 0) {
+                    time_t mod_time = file_stat.st_mtime;
+                    struct tm* time_info = localtime(&mod_time);
+                    char date_buf[32];
+                    strftime(date_buf, sizeof(date_buf), "%m/%d/%y", time_info);
+                    date_str = date_buf;
+                }
+                
+                std::string snippet;
+                std::ifstream file(file_path);
+                if (file) {
+                    std::string first_line;
+                    std::getline(file, first_line);
+                    file.close();
+                    snippet = first_line;
+                }
+                
+                struct nk_rect item_bounds;
+                nk_widget(&item_bounds, ctx);
+                struct nk_command_buffer* canvas = nk_window_get_canvas(ctx);
+                
+                struct nk_color bg_color = is_selected ? theme.sidebar_selected_normal : theme.sidebar_btn_normal;
+                struct nk_input* input_ctx = &ctx->input;
+                bool hovered = nk_input_is_mouse_hovering_rect(input_ctx, item_bounds);
+                if (hovered && !is_selected) {
+                    bg_color = theme.sidebar_btn_hover;
+                }
+                nk_fill_rect(canvas, item_bounds, 0, bg_color);
+                
+                float title_y = item_bounds.y + 8;
+                nk_draw_text(canvas, nk_rect(item_bounds.x + 10, title_y, item_bounds.w - 20, sidebar_font->handle.height),
+                            display_name.c_str(), display_name.length(), &sidebar_font->handle,
+                            bg_color, theme.sidebar_btn_text);
+                
+                float subtitle_y = title_y + sidebar_font->handle.height + 4;
+                struct nk_color subtitle_color = theme.sidebar_btn_text;
+                subtitle_color.a = 140;
+                
+                float content_width = item_bounds.w - 20;
+                float date_width = 65;
+                float snippet_area_width = content_width - date_width - 10;
+                
+                nk_draw_text(canvas, nk_rect(item_bounds.x + 10, subtitle_y, date_width, small_font->handle.height),
+                            date_str.c_str(), date_str.length(), &small_font->handle,
+                            bg_color, subtitle_color);
+                
+                if (!snippet.empty()) {
+                    float snippet_text_width = small_font->handle.width(small_font->handle.userdata, small_font->handle.height, snippet.c_str(), snippet.length());
+                    float snippet_area_x = item_bounds.x + 10 + date_width + 10;
+                    
+                    std::string display_snippet = snippet;
+                    if (snippet_text_width > snippet_area_width) {
+                        std::string ellipsis = "...";
+                        float ellipsis_width = small_font->handle.width(small_font->handle.userdata, small_font->handle.height, ellipsis.c_str(), ellipsis.length());
+                        float available_width = snippet_area_width - ellipsis_width;
+                        
+                        size_t fit_chars = 0;
+                        float current_width = 0;
+                        for (size_t j = 0; j < snippet.length(); ++j) {
+                            float char_width = small_font->handle.width(small_font->handle.userdata, small_font->handle.height, snippet.c_str() + j, 1);
+                            if (current_width + char_width > available_width) break;
+                            current_width += char_width;
+                            fit_chars = j + 1;
+                        }
+                        display_snippet = snippet.substr(0, fit_chars) + ellipsis;
+                        snippet_text_width = small_font->handle.width(small_font->handle.userdata, small_font->handle.height, display_snippet.c_str(), display_snippet.length());
+                    }
+                    
+                    float snippet_x = snippet_area_x + snippet_area_width - snippet_text_width;
+                    if (snippet_x < snippet_area_x) snippet_x = snippet_area_x;
+                    nk_draw_text(canvas, nk_rect(snippet_x, subtitle_y, snippet_text_width, small_font->handle.height),
+                                display_snippet.c_str(), display_snippet.length(), &small_font->handle,
+                                bg_color, subtitle_color);
+                }
+                
+                if (hovered && nk_input_is_mouse_pressed(input_ctx, NK_BUTTON_LEFT)) {
                     if (!state.sidebar.searching && state.sidebar.renaming && state.sidebar.rename_file_index != static_cast<int>(i)) {
                         state.sidebar.renaming = false;
                         state.sidebar.rename_pending = false;

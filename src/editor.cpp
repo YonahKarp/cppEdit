@@ -425,6 +425,7 @@ void render_editor(struct nk_context* ctx, EditorState& state,
 
             state.pending_paragraph_move = 0;
             state.pending_paragraph_extend_selection = false;
+            state.processed_pending_action = true;
         }
 
         if (state.pending_jump_to_end != 0) {
@@ -444,6 +445,7 @@ void render_editor(struct nk_context* ctx, EditorState& state,
             ctx->current->edit.sel_start = current_cursor;
             ctx->current->edit.sel_end = current_cursor;
             state.pending_jump_to_end = 0;
+            state.processed_pending_action = true;
         }
 
         if (state.pending_delete_word) {
@@ -462,6 +464,7 @@ void render_editor(struct nk_context* ctx, EditorState& state,
                 ctx->text_edit.string.len = state.text_len;
             }
             state.pending_delete_word = false;
+            state.processed_pending_action = true;
         }
 
         if (state.pending_select_all) {
@@ -470,6 +473,7 @@ void render_editor(struct nk_context* ctx, EditorState& state,
             ctx->current->edit.cursor = state.text_len;
             current_cursor = state.text_len;
             state.pending_select_all = false;
+            state.processed_pending_action = true;
         }
 
         if (state.pending_navigate_to_pos >= 0) {
