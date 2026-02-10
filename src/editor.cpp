@@ -19,6 +19,17 @@
 
 static const Uint32 BLINK_INTERVAL = 530;
 
+static inline uint64_t fnv1a_hash(const char* data, int len) {
+    uint64_t hash = 14695981039346656037ULL;
+    for (int i = 0; i < len; i++) {
+        hash ^= static_cast<uint64_t>(static_cast<unsigned char>(data[i]));
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
+
+constexpr int HASH_CHANGE_DETECTION_THRESHOLD = 4096;
+
 int count_words(const char* text, int text_len) {
     int count = 0;
     bool in_word = false;
@@ -61,6 +72,9 @@ void init_editor_state(EditorState& state, const char* file_path, const char* st
 
     state.prev_text_len = state.text_len;
     std::memcpy(state.prev_text_buffer, state.text_buffer, state.text_len);
+    if (state.text_len >= HASH_CHANGE_DETECTION_THRESHOLD) {
+        state.prev_text_hash = fnv1a_hash(state.text_buffer, state.text_len);
+    }
     state.cached_word_count = count_words(state.text_buffer, state.text_len);
 }
 
@@ -106,7 +120,7 @@ void handle_cursor_blink(EditorState& state, bool had_input) {
 void render_editor(struct nk_context* ctx, EditorState& state,
                    int window_width, int window_height, struct nk_font* font,
                    struct nk_font* status_font) {
-    Theme theme = get_theme(state.dark_theme);
+    const Theme& theme = get_theme(state.dark_theme);
     
     struct nk_color edit_bg = theme.edit_bg;
     struct nk_color cursor_on = theme.cursor;
@@ -116,27 +130,32 @@ void render_editor(struct nk_context* ctx, EditorState& state,
     ctx->style.edit.cursor_hover = cursor_color;
     ctx->style.edit.cursor_text_normal = edit_bg;
     ctx->style.edit.cursor_text_hover = edit_bg;
-    ctx->style.edit.cursor_size = 1;
     
-    ctx->style.edit.normal = nk_style_item_color(edit_bg);
-    ctx->style.edit.hover = nk_style_item_color(edit_bg);
-    ctx->style.edit.active = nk_style_item_color(edit_bg);
-    ctx->style.edit.text_normal = theme.edit_text;
-    ctx->style.edit.text_hover = theme.edit_text;
-    ctx->style.edit.text_active = theme.edit_text;
-    ctx->style.edit.selected_normal = theme.selection;
-    ctx->style.edit.selected_hover = theme.selection;
-    ctx->style.edit.selected_text_normal = theme.edit_text;
-    ctx->style.edit.selected_text_hover = theme.edit_text;
-    
-    ctx->style.edit.scrollbar.normal = nk_style_item_color(theme.scrollbar_bg);
-    ctx->style.edit.scrollbar.hover = nk_style_item_color(theme.scrollbar_bg);
-    ctx->style.edit.scrollbar.active = nk_style_item_color(theme.scrollbar_bg);
-    ctx->style.edit.scrollbar.cursor_normal = nk_style_item_color(theme.scrollbar_cursor);
-    ctx->style.edit.scrollbar.cursor_hover = nk_style_item_color(theme.scrollbar_cursor_hover);
-    ctx->style.edit.scrollbar.cursor_active = nk_style_item_color(theme.scrollbar_cursor_hover);
-    
-    ctx->style.window.fixed_background = nk_style_item_color(theme.background);
+    static bool editor_styles_initialized = false;
+    if (theme_changed(state.dark_theme) || !editor_styles_initialized) {
+        editor_styles_initialized = true;
+        ctx->style.edit.cursor_size = 1;
+        
+        ctx->style.edit.normal = nk_style_item_color(edit_bg);
+        ctx->style.edit.hover = nk_style_item_color(edit_bg);
+        ctx->style.edit.active = nk_style_item_color(edit_bg);
+        ctx->style.edit.text_normal = theme.edit_text;
+        ctx->style.edit.text_hover = theme.edit_text;
+        ctx->style.edit.text_active = theme.edit_text;
+        ctx->style.edit.selected_normal = theme.selection;
+        ctx->style.edit.selected_hover = theme.selection;
+        ctx->style.edit.selected_text_normal = theme.edit_text;
+        ctx->style.edit.selected_text_hover = theme.edit_text;
+        
+        ctx->style.edit.scrollbar.normal = nk_style_item_color(theme.scrollbar_bg);
+        ctx->style.edit.scrollbar.hover = nk_style_item_color(theme.scrollbar_bg);
+        ctx->style.edit.scrollbar.active = nk_style_item_color(theme.scrollbar_bg);
+        ctx->style.edit.scrollbar.cursor_normal = nk_style_item_color(theme.scrollbar_cursor);
+        ctx->style.edit.scrollbar.cursor_hover = nk_style_item_color(theme.scrollbar_cursor_hover);
+        ctx->style.edit.scrollbar.cursor_active = nk_style_item_color(theme.scrollbar_cursor_hover);
+        
+        ctx->style.window.fixed_background = nk_style_item_color(theme.background);
+    }
 
 
     const int status_bar_height = 30;
@@ -289,10 +308,17 @@ void render_editor(struct nk_context* ctx, EditorState& state,
             state.cached_word_count = count_words(state.text_buffer, state.text_len);
         }
 
-        bool content_changed =
-            (state.text_len != state.prev_text_len) ||
-            (state.text_len > 0 &&
-             std::memcmp(state.text_buffer, state.prev_text_buffer, state.text_len) != 0);
+        bool content_changed = false;
+        if (state.text_len != state.prev_text_len) {
+            content_changed = true;
+        } else if (state.text_len > 0) {
+            if (state.text_len >= HASH_CHANGE_DETECTION_THRESHOLD) {
+                uint64_t current_hash = fnv1a_hash(state.text_buffer, state.text_len);
+                content_changed = (current_hash != state.prev_text_hash);
+            } else {
+                content_changed = std::memcmp(state.text_buffer, state.prev_text_buffer, state.text_len) != 0;
+            }
+        }
         if (content_changed) {
             bool had_selection = (state.prev_sel_start != state.prev_sel_end);
             int chars_added = state.text_len - state.prev_text_len;
@@ -333,6 +359,9 @@ void render_editor(struct nk_context* ctx, EditorState& state,
             
             state.prev_text_len = state.text_len;
             std::memcpy(state.prev_text_buffer, state.text_buffer, state.text_len);
+            if (state.text_len >= HASH_CHANGE_DETECTION_THRESHOLD) {
+                state.prev_text_hash = fnv1a_hash(state.text_buffer, state.text_len);
+            }
             state.last_typed_char = 0;
         }
 
@@ -597,6 +626,9 @@ void perform_undo(EditorState& state, struct nk_context* ctx) {
     
     state.prev_text_len = state.text_len;
     std::memcpy(state.prev_text_buffer, state.text_buffer, state.text_len);
+    if (state.text_len >= HASH_CHANGE_DETECTION_THRESHOLD) {
+        state.prev_text_hash = fnv1a_hash(state.text_buffer, state.text_len);
+    }
     
     delete[] state.undo_state.text_buffer;
     state.undo_state.text_buffer = nullptr;

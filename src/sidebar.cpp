@@ -85,6 +85,7 @@ void toggle_sidebar(EditorState& state) {
         state.sidebar.searching = false;
         state.sidebar.search_buffer[0] = '\0';
         state.sidebar.search_len = 0;
+        state.sidebar.scroll_offset = 0;
         state.sidebar.anim_progress = 0.0f;
         state.sidebar.anim_start_time = SDL_GetTicks();
     }
@@ -223,7 +224,7 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
 
     (void)font;
     
-    Theme theme = get_theme(state.dark_theme);
+    const Theme& theme = get_theme(state.dark_theme);
 
     const int sidebar_width = 250;
     const int item_height = 55;
@@ -245,62 +246,76 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
     float t = state.sidebar.anim_closing ? (1.0f - state.sidebar.anim_progress) : state.sidebar.anim_progress;
     int sidebar_x = (int)((t - 1.0f) * sidebar_width);
 
-    struct nk_style_button style = ctx->style.button;
-    style.normal = nk_style_item_color(theme.sidebar_btn_normal);
-    style.hover = nk_style_item_color(theme.sidebar_btn_hover);
-    style.active = nk_style_item_color(theme.sidebar_btn_active);
-    style.text_normal = theme.sidebar_btn_text;
-    style.text_hover = theme.sidebar_btn_text_hover;
-    style.text_active = theme.sidebar_btn_text_hover;
-    style.border = 0;
-    style.rounding = 0;
-    style.text_alignment = NK_TEXT_LEFT;
-    style.padding = nk_vec2(10, 0);
+    static struct nk_style_button style;
+    static struct nk_style_button selected_style;
+    static struct nk_style_button new_file_style;
+    static struct nk_style_button new_file_selected_style;
+    static struct nk_style_button delete_style;
+    static struct nk_style_button cancel_style;
+    static struct nk_style_button delete_selected_style;
+    static struct nk_style_button cancel_selected_style;
+    static bool sidebar_styles_initialized = false;
+    
+    if (theme_changed(state.dark_theme) || !sidebar_styles_initialized) {
+        sidebar_styles_initialized = true;
+        
+        style = ctx->style.button;
+        style.normal = nk_style_item_color(theme.sidebar_btn_normal);
+        style.hover = nk_style_item_color(theme.sidebar_btn_hover);
+        style.active = nk_style_item_color(theme.sidebar_btn_active);
+        style.text_normal = theme.sidebar_btn_text;
+        style.text_hover = theme.sidebar_btn_text_hover;
+        style.text_active = theme.sidebar_btn_text_hover;
+        style.border = 0;
+        style.rounding = 0;
+        style.text_alignment = NK_TEXT_LEFT;
+        style.padding = nk_vec2(10, 0);
 
-    struct nk_style_button selected_style = style;
-    selected_style.normal = nk_style_item_color(theme.sidebar_selected_normal);
-    selected_style.hover = nk_style_item_color(theme.sidebar_selected_hover);
-    selected_style.active = nk_style_item_color(theme.sidebar_selected_active);
+        selected_style = style;
+        selected_style.normal = nk_style_item_color(theme.sidebar_selected_normal);
+        selected_style.hover = nk_style_item_color(theme.sidebar_selected_hover);
+        selected_style.active = nk_style_item_color(theme.sidebar_selected_active);
 
-    struct nk_style_button new_file_style = style;
-    new_file_style.normal = nk_style_item_color(theme.sidebar_new_file_normal);
-    new_file_style.hover = nk_style_item_color(theme.sidebar_new_file_hover);
-    new_file_style.active = nk_style_item_color(theme.sidebar_new_file_active);
+        new_file_style = style;
+        new_file_style.normal = nk_style_item_color(theme.sidebar_new_file_normal);
+        new_file_style.hover = nk_style_item_color(theme.sidebar_new_file_hover);
+        new_file_style.active = nk_style_item_color(theme.sidebar_new_file_active);
 
-    struct nk_style_button new_file_selected_style = new_file_style;
-    new_file_selected_style.normal = nk_style_item_color(theme.sidebar_new_file_selected_normal);
-    new_file_selected_style.hover = nk_style_item_color(theme.sidebar_new_file_selected_hover);
-    new_file_selected_style.active = nk_style_item_color(theme.sidebar_new_file_selected_active);
+        new_file_selected_style = new_file_style;
+        new_file_selected_style.normal = nk_style_item_color(theme.sidebar_new_file_selected_normal);
+        new_file_selected_style.hover = nk_style_item_color(theme.sidebar_new_file_selected_hover);
+        new_file_selected_style.active = nk_style_item_color(theme.sidebar_new_file_selected_active);
 
-    struct nk_style_button delete_style = style;
-    delete_style.normal = nk_style_item_color(theme.sidebar_delete_normal);
-    delete_style.hover = nk_style_item_color(theme.sidebar_delete_hover);
-    delete_style.active = nk_style_item_color(theme.sidebar_delete_active);
-    delete_style.text_alignment = NK_TEXT_CENTERED;
+        delete_style = style;
+        delete_style.normal = nk_style_item_color(theme.sidebar_delete_normal);
+        delete_style.hover = nk_style_item_color(theme.sidebar_delete_hover);
+        delete_style.active = nk_style_item_color(theme.sidebar_delete_active);
+        delete_style.text_alignment = NK_TEXT_CENTERED;
 
-    struct nk_style_button cancel_style = style;
-    cancel_style.normal = nk_style_item_color(theme.sidebar_cancel_normal);
-    cancel_style.hover = nk_style_item_color(theme.sidebar_cancel_hover);
-    cancel_style.active = nk_style_item_color(theme.sidebar_cancel_active);
-    cancel_style.text_alignment = NK_TEXT_CENTERED;
+        cancel_style = style;
+        cancel_style.normal = nk_style_item_color(theme.sidebar_cancel_normal);
+        cancel_style.hover = nk_style_item_color(theme.sidebar_cancel_hover);
+        cancel_style.active = nk_style_item_color(theme.sidebar_cancel_active);
+        cancel_style.text_alignment = NK_TEXT_CENTERED;
+
+        delete_selected_style = delete_style;
+        delete_selected_style.normal = nk_style_item_color(nk_rgb(160, 80, 80));
+        delete_selected_style.hover = nk_style_item_color(nk_rgb(180, 90, 90));
+        delete_selected_style.border_color = nk_rgb(255, 255, 255);
+        delete_selected_style.border = 2;
+
+        cancel_selected_style = cancel_style;
+        cancel_selected_style.normal = nk_style_item_color(nk_rgb(110, 110, 110));
+        cancel_selected_style.hover = nk_style_item_color(nk_rgb(130, 130, 130));
+        cancel_selected_style.border_color = nk_rgb(255, 255, 255);
+        cancel_selected_style.border = 2;
+    }
 
     if (state.sidebar.confirm_delete) {
         const int dialog_width = 280;
         const int dialog_height = 120;
         int dialog_x = (window_width - dialog_width) / 2;
         int dialog_y = (window_height - dialog_height) / 2;
-
-        struct nk_style_button delete_selected_style = delete_style;
-        delete_selected_style.normal = nk_style_item_color(nk_rgb(160, 80, 80));
-        delete_selected_style.hover = nk_style_item_color(nk_rgb(180, 90, 90));
-        delete_selected_style.border_color = nk_rgb(255, 255, 255);
-        delete_selected_style.border = 2;
-
-        struct nk_style_button cancel_selected_style = cancel_style;
-        cancel_selected_style.normal = nk_style_item_color(nk_rgb(110, 110, 110));
-        cancel_selected_style.hover = nk_style_item_color(nk_rgb(130, 130, 130));
-        cancel_selected_style.border_color = nk_rgb(255, 255, 255);
-        cancel_selected_style.border = 2;
 
         if (nk_begin(ctx, "Delete Confirmation",
                      nk_rect(dialog_x, dialog_y, dialog_width, dialog_height),

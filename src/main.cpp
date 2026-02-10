@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
                           app.font, app.status_font);
             render_sidebar(app.ctx, editor, app.window_width, app.window_height, app.font, app.sidebar_font, app.status_font);
 
-            Theme theme = get_theme(editor.dark_theme);
+            const Theme& theme = get_theme(editor.dark_theme);
             SDL_SetRenderDrawColor(app.renderer, theme.background.r, theme.background.g, theme.background.b, 255);
             SDL_RenderClear(app.renderer);
             nk_sdl_render(NK_ANTI_ALIASING_ON);

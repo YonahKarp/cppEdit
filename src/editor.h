@@ -4,6 +4,7 @@
 #include "search.h"
 #include <SDL.h>
 #include <string>
+#include <cstdint>
 
 struct nk_context;
 struct nk_font;
@@ -23,6 +24,7 @@ struct EditorState {
     int text_len = 0;
     char prev_text_buffer[TEXT_BUFFER_SIZE];
     int prev_text_len = 0;
+    uint64_t prev_text_hash = 0;
 
     std::string current_file_path;
     std::string temp_file_path;
