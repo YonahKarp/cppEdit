@@ -49,15 +49,17 @@ bool init_app(App& app) {
 
     app.ctx = nk_sdl_init(app.window, app.renderer);
 
+    SDL_ShowCursor(SDL_DISABLE);
+
     struct nk_font_atlas* atlas;
     nk_sdl_font_stash_begin(&atlas);
     app.font = nk_font_atlas_add_from_file(atlas, "../fonts/OpenSans-Regular.ttf", 30, 0);
     if (!app.font) {
         app.font = nk_font_atlas_add_default(atlas, 30, 0);
     }
-    app.status_font = nk_font_atlas_add_from_file(atlas, "../fonts/OpenSans-Regular.ttf", 18, 0);
+    app.status_font = nk_font_atlas_add_from_file(atlas, "../fonts/OpenSans-Regular.ttf", App::STATUS_FONT_SIZE, 0);
     if (!app.status_font) {
-        app.status_font = nk_font_atlas_add_default(atlas, 18, 0);
+        app.status_font = nk_font_atlas_add_default(atlas, App::STATUS_FONT_SIZE, 0);
     }
     app.sidebar_font = nk_font_atlas_add_from_file(atlas, "../fonts/OpenSans-Regular.ttf", App::SIDEBAR_FONT_SIZE, 0);
     if (!app.sidebar_font) {
@@ -86,7 +88,7 @@ void reload_fonts(App& app, float new_font_size) {
     }
 
     app.font_size = new_font_size;
-    float status_font_size = 18;
+    float status_font_size = App::STATUS_FONT_SIZE;
 
     struct nk_font_atlas* atlas;
     nk_sdl_font_stash_begin(&atlas);
@@ -94,9 +96,9 @@ void reload_fonts(App& app, float new_font_size) {
     if (!app.font) {
         app.font = nk_font_atlas_add_default(atlas, new_font_size, 0);
     }
-    app.status_font = nk_font_atlas_add_from_file(atlas, "../fonts/OpenSans-Regular.ttf", status_font_size, 0);
+    app.status_font = nk_font_atlas_add_from_file(atlas, "../fonts/OpenSans-Regular.ttf", App::STATUS_FONT_SIZE, 0);
     if (!app.status_font) {
-        app.status_font = nk_font_atlas_add_default(atlas, status_font_size, 0);
+        app.status_font = nk_font_atlas_add_default(atlas, App::STATUS_FONT_SIZE, 0);
     }
     app.sidebar_font = nk_font_atlas_add_from_file(atlas, "../fonts/OpenSans-Regular.ttf", App::SIDEBAR_FONT_SIZE, 0);
     if (!app.sidebar_font) {

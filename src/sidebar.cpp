@@ -227,7 +227,7 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
     const Theme& theme = get_theme(state.dark_theme);
 
     const int sidebar_width = 250;
-    const int item_height = 55;
+    const int item_height = 60;
 
     if (state.sidebar.anim_progress < 1.0f) {
         Uint32 elapsed = SDL_GetTicks() - state.sidebar.anim_start_time;
@@ -321,6 +321,7 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
                      nk_rect(dialog_x, dialog_y, dialog_width, dialog_height),
                      NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) {
 
+            nk_style_push_font(ctx, &sidebar_font->handle);
             nk_layout_row_dynamic(ctx, 30, 1);
             std::string filename = state.sidebar.file_list[state.sidebar.delete_index];
             if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".txt") {
@@ -355,6 +356,7 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
                 state.sidebar.delete_index = -1;
                 state.sidebar.previous_file_path.clear();
             }
+            nk_style_pop_font(ctx);
         }
         nk_end(ctx);
         return true;
