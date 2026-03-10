@@ -11,7 +11,33 @@ struct nk_font;
 
 constexpr int TEXT_BUFFER_SIZE = 512 * 1024;  // 512KB - enough for ~80k words
 
+enum class ParagraphDirection { None = 0, Previous = -1, Next = 1 };
+enum class JumpDirection { None = 0, Top = -1, Bottom = 1 };
+
 struct UndoState {
+    ~UndoState() { delete[] text_buffer; }
+    
+    UndoState() = default;
+    UndoState(const UndoState&) = delete;
+    UndoState& operator=(const UndoState&) = delete;
+    UndoState(UndoState&& other) noexcept 
+        : text_buffer(other.text_buffer), text_len(other.text_len),
+          cursor_pos(other.cursor_pos), sel_start(other.sel_start), sel_end(other.sel_end) {
+        other.text_buffer = nullptr;
+    }
+    UndoState& operator=(UndoState&& other) noexcept {
+        if (this != &other) {
+            delete[] text_buffer;
+            text_buffer = other.text_buffer;
+            text_len = other.text_len;
+            cursor_pos = other.cursor_pos;
+            sel_start = other.sel_start;
+            sel_end = other.sel_end;
+            other.text_buffer = nullptr;
+        }
+        return *this;
+    }
+
     char* text_buffer = nullptr;
     int text_len = 0;
     int cursor_pos = 0;
@@ -28,7 +54,7 @@ struct EditorState {
 
     std::string current_file_path;
     std::string temp_file_path;
-    const char* state_file_path = nullptr;
+    std::string state_file_path;
 
     int saved_cursor_pos = -1;
     float saved_scroll_y = -1.0f;
@@ -48,10 +74,10 @@ struct EditorState {
     bool first_frame = true;
     bool second_frame = false;
 
-    int pending_paragraph_move = 0;  // -1 = prev paragraph, 1 = next paragraph, 0 = none
+    ParagraphDirection pending_paragraph_move = ParagraphDirection::None;
     bool pending_paragraph_extend_selection = false;
     bool pending_select_all = false;
-    int pending_jump_to_end = 0;  // -1 = top, 1 = bottom, 0 = none
+    JumpDirection pending_jump_to_end = JumpDirection::None;
     bool pending_delete_word = false;
     bool pending_scroll_to_cursor = false;
     int pending_navigate_to_pos = -1;

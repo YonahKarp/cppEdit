@@ -3,13 +3,7 @@
 #include "sidebar.h"
 #include "search.h"
 
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
-#define NK_INCLUDE_STANDARD_VARARGS
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
-#include "nuklear.h"
+#include "nk_common.h"
 
 #include "nuklear_sdl_renderer.h"
 
@@ -174,12 +168,12 @@ InputState process_events(nk_context* ctx, EditorState& state, SDL_Event* first_
                     input.had_input = true;
                     return;
                 } else if (e.key.keysym.sym == SDLK_UP) {
-                    state.pending_paragraph_move = -1;
+                    state.pending_paragraph_move = ParagraphDirection::Previous;
                     state.pending_paragraph_extend_selection = shift_held;
                     input.had_input = true;
                     return;
                 } else if (e.key.keysym.sym == SDLK_DOWN) {
-                    state.pending_paragraph_move = 1;
+                    state.pending_paragraph_move = ParagraphDirection::Next;
                     state.pending_paragraph_extend_selection = shift_held;
                     input.had_input = true;
                     return;
@@ -209,11 +203,11 @@ InputState process_events(nk_context* ctx, EditorState& state, SDL_Event* first_
 
             if (e.key.keysym.mod & (KMOD_LALT | KMOD_RALT)) {
                 if (e.key.keysym.sym == SDLK_UP) {
-                    state.pending_jump_to_end = -1;
+                    state.pending_jump_to_end = JumpDirection::Top;
                     input.had_input = true;
                     return;
                 } else if (e.key.keysym.sym == SDLK_DOWN) {
-                    state.pending_jump_to_end = 1;
+                    state.pending_jump_to_end = JumpDirection::Bottom;
                     input.had_input = true;
                     return;
                 }

@@ -1,14 +1,8 @@
 #include "app.h"
 #include <cstdio>
 
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
-#define NK_INCLUDE_STANDARD_VARARGS
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
 #define NK_IMPLEMENTATION
-#include "nuklear.h"
+#include "nk_common.h"
 
 #define NK_SDL_RENDERER_IMPLEMENTATION
 #include "nuklear_sdl_renderer.h"
@@ -88,7 +82,6 @@ void reload_fonts(App& app, float new_font_size) {
     }
 
     app.font_size = new_font_size;
-    float status_font_size = App::STATUS_FONT_SIZE;
 
     struct nk_font_atlas* atlas;
     nk_sdl_font_stash_begin(&atlas);

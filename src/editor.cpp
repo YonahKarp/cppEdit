@@ -6,13 +6,7 @@
 #include <fstream>
 #include <cmath>
 
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
-#define NK_INCLUDE_STANDARD_VARARGS
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
-#include "nuklear.h"
+#include "nk_common.h"
 
 #include "nuklear_sdl_renderer.h"
 #include "theme.h"
@@ -82,24 +76,26 @@ void safe_save(EditorState& state) {
     std::ofstream outfile(state.temp_file_path, std::ios::binary | std::ios::trunc);
     if (outfile) {
         outfile.write(state.text_buffer, state.text_len);
+        bool write_success = outfile.good();
         outfile.close();
-        if (outfile.good()) {
+        if (write_success) {
             std::rename(state.temp_file_path.c_str(), state.current_file_path.c_str());
         }
     }
 }
 
 void save_state(EditorState& state, int cursor_pos, float scroll_y) {
-    std::string temp_state_path = std::string(state.state_file_path) + ".tmp";
+    std::string temp_state_path = state.state_file_path + ".tmp";
     std::ofstream state_out(temp_state_path);
     if (state_out) {
         state_out << state.current_file_path << "\n";
         state_out << cursor_pos << " " << scroll_y << "\n";
         state_out << state.font_size << "\n";
         state_out << (state.dark_theme ? 1 : 0) << "\n";
+        bool write_success = state_out.good();
         state_out.close();
-        if (state_out.good()) {
-            std::rename(temp_state_path.c_str(), state.state_file_path);
+        if (write_success) {
+            std::rename(temp_state_path.c_str(), state.state_file_path.c_str());
         }
     }
 }
@@ -162,7 +158,6 @@ void render_editor(struct nk_context* ctx, EditorState& state,
 
     nk_flags editor_flags = NK_WINDOW_NO_SCROLLBAR;
     if (state.sidebar.visible) {
-        // This introduces a bug where once the user clicks on the menu, they can no longer change file or input will stop working
         editor_flags |= NK_WINDOW_BACKGROUND;
     }
 
@@ -401,8 +396,8 @@ void render_editor(struct nk_context* ctx, EditorState& state,
             state.pending_scroll_to_cursor = false;
         }
 
-        if (state.pending_paragraph_move != 0) {
-            int direction = state.pending_paragraph_move;
+        if (state.pending_paragraph_move != ParagraphDirection::None) {
+            int direction = static_cast<int>(state.pending_paragraph_move);
 
             int selection_anchor = ctx->current->edit.sel_start;
             bool has_selection = (ctx->current->edit.sel_start != ctx->current->edit.sel_end);
@@ -452,16 +447,16 @@ void render_editor(struct nk_context* ctx, EditorState& state,
             state.target_scroll_y = new_scroll;
             state.pending_scroll_to_cursor = true;
 
-            state.pending_paragraph_move = 0;
+            state.pending_paragraph_move = ParagraphDirection::None;
             state.pending_paragraph_extend_selection = false;
             state.processed_pending_action = true;
         }
 
-        if (state.pending_jump_to_end != 0) {
+        if (state.pending_jump_to_end != JumpDirection::None) {
             ctx->current->edit.sel_start = ctx->current->edit.cursor;
             ctx->current->edit.sel_end = ctx->current->edit.cursor;
 
-            if (state.pending_jump_to_end < 0) {
+            if (state.pending_jump_to_end == JumpDirection::Top) {
                 current_cursor = 0;
                 ctx->current->edit.scrollbar.y = 0;
                 current_scroll = 0;
@@ -473,7 +468,7 @@ void render_editor(struct nk_context* ctx, EditorState& state,
             ctx->current->edit.cursor = current_cursor;
             ctx->current->edit.sel_start = current_cursor;
             ctx->current->edit.sel_end = current_cursor;
-            state.pending_jump_to_end = 0;
+            state.pending_jump_to_end = JumpDirection::None;
             state.processed_pending_action = true;
         }
 

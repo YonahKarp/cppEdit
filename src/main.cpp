@@ -3,18 +3,13 @@
 #include "sidebar.h"
 #include "input.h"
 #include "search.h"
+#include "shortcuts.h"
 
 #include <fstream>
 #include <string>
 #include <sys/stat.h>
 
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
-#define NK_INCLUDE_STANDARD_VARARGS
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
-#include "nuklear.h"
+#include "nk_common.h"
 
 #include "nuklear_sdl_renderer.h"
 #include "theme.h"
@@ -99,6 +94,8 @@ int main(int argc, char** argv) {
         mkdir(recently_deleted_dir, 0755);
         #endif
     }
+
+    ensure_shortcuts_file(user_files_dir);
 
     EditorState editor;
     load_editor_state(editor, app, state_file_path, default_file_path, user_files_dir);
@@ -210,8 +207,8 @@ int main(int argc, char** argv) {
         if (editor.first_frame || editor.second_frame) {
             needs_redraw = true;
         }
-        if (editor.pending_select_all || editor.pending_paragraph_move != 0 || 
-            editor.pending_jump_to_end != 0 || editor.pending_delete_word ||
+        if (editor.pending_select_all || editor.pending_paragraph_move != ParagraphDirection::None || 
+            editor.pending_jump_to_end != JumpDirection::None || editor.pending_delete_word ||
             editor.pending_navigate_to_pos >= 0 || editor.pending_undo) {
             needs_redraw = true;
         }

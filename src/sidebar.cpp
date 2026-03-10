@@ -10,16 +10,70 @@
 #include <sys/stat.h>
 #include <ctime>
 
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
-#define NK_INCLUDE_STANDARD_VARARGS
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
-#include "nuklear.h"
+#include "nk_common.h"
 
 #include "nuklear_sdl_renderer.h"
 #include "theme.h"
+
+namespace {
+
+inline std::string_view strip_txt_extension(std::string_view filename) {
+    if (filename.size() > 4 && filename.substr(filename.size() - 4) == ".txt") {
+        return filename.substr(0, filename.size() - 4);
+    }
+    return filename;
+}
+
+struct FileEntryCache {
+    std::string filename;
+    std::string snippet;
+    std::string date_str;
+    time_t mod_time = 0;
+};
+
+std::vector<FileEntryCache> file_cache;
+std::vector<FileEntryCache> deleted_file_cache;
+
+void update_file_cache(const std::vector<std::string>& file_list, const std::string& dir, 
+                       std::vector<FileEntryCache>& cache) {
+    cache.clear();
+    cache.reserve(file_list.size());
+    
+    for (const auto& filename : file_list) {
+        FileEntryCache entry;
+        entry.filename = filename;
+        
+        std::string file_path = dir + "/" + filename;
+        
+        struct stat file_stat;
+        if (stat(file_path.c_str(), &file_stat) == 0) {
+            entry.mod_time = file_stat.st_mtime;
+            struct tm* time_info = localtime(&entry.mod_time);
+            char date_buf[32];
+            strftime(date_buf, sizeof(date_buf), "%m/%d/%y", time_info);
+            entry.date_str = date_buf;
+        }
+        
+        std::ifstream file(file_path);
+        if (file) {
+            std::getline(file, entry.snippet);
+        }
+        
+        cache.push_back(std::move(entry));
+    }
+}
+
+const FileEntryCache* find_cached_entry(const std::vector<FileEntryCache>& cache, 
+                                        const std::string& filename) {
+    for (const auto& entry : cache) {
+        if (entry.filename == filename) {
+            return &entry;
+        }
+    }
+    return nullptr;
+}
+
+} // anonymous namespace
 
 void scan_txt_files(EditorState& state) {
     state.sidebar.file_list.clear();
@@ -46,8 +100,8 @@ void scan_txt_files(EditorState& state) {
     std::sort(files_with_times.begin(), files_with_times.end(),
               [](const auto& a, const auto& b) { return a.second > b.second; });
     
-    for (const auto& file : files_with_times) {
-        state.sidebar.file_list.push_back(file.first);
+    for (const auto& [name, time] : files_with_times) {
+        state.sidebar.file_list.push_back(name);
     }
 
     state.sidebar.selected_index = 0;
@@ -69,6 +123,8 @@ void scan_txt_files(EditorState& state) {
     }
     
     state.sidebar.filtered_file_list = state.sidebar.file_list;
+    
+    update_file_cache(state.sidebar.file_list, state.user_files_dir, file_cache);
 }
 
 void scan_deleted_files(EditorState& state) {
@@ -96,11 +152,13 @@ void scan_deleted_files(EditorState& state) {
     std::sort(files_with_times.begin(), files_with_times.end(),
               [](const auto& a, const auto& b) { return a.second > b.second; });
     
-    for (const auto& file : files_with_times) {
-        state.sidebar.deleted_file_list.push_back(file.first);
+    for (const auto& [name, time] : files_with_times) {
+        state.sidebar.deleted_file_list.push_back(name);
     }
     
     state.sidebar.filtered_deleted_list = state.sidebar.deleted_file_list;
+    
+    update_file_cache(state.sidebar.deleted_file_list, state.recently_deleted_dir, deleted_file_cache);
 }
 
 void cleanup_old_deleted_files(EditorState& state) {
@@ -615,31 +673,15 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
                 if (!state.sidebar.searching && state.sidebar.renaming && static_cast<int>(i) == state.sidebar.rename_file_index) {
                     display_name = std::string(state.sidebar.rename_buffer, state.sidebar.rename_len);
                 } else {
-                    display_name = display_list[i];
-                    if (display_name.size() > 4 && display_name.substr(display_name.size() - 4) == ".txt") {
-                        display_name = display_name.substr(0, display_name.size() - 4);
-                    }
+                    display_name = std::string(strip_txt_extension(display_list[i]));
                 }
                 
-                std::string file_path = state.user_files_dir + "/" + display_list[i];
-                
-                struct stat file_stat;
+                const FileEntryCache* cached = find_cached_entry(file_cache, display_list[i]);
                 std::string date_str;
-                if (stat(file_path.c_str(), &file_stat) == 0) {
-                    time_t mod_time = file_stat.st_mtime;
-                    struct tm* time_info = localtime(&mod_time);
-                    char date_buf[32];
-                    strftime(date_buf, sizeof(date_buf), "%m/%d/%y", time_info);
-                    date_str = date_buf;
-                }
-                
                 std::string snippet;
-                std::ifstream file(file_path);
-                if (file) {
-                    std::string first_line;
-                    std::getline(file, first_line);
-                    file.close();
-                    snippet = first_line;
+                if (cached) {
+                    date_str = cached->date_str;
+                    snippet = cached->snippet;
                 }
                 
                 struct nk_rect item_bounds;
@@ -735,30 +777,14 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
                     bool is_selected = !state.sidebar.new_file_selected &&
                                        (adjusted_index == state.sidebar.selected_index);
 
-                    std::string display_name = deleted_display_list[i];
-                    if (display_name.size() > 4 && display_name.substr(display_name.size() - 4) == ".txt") {
-                        display_name = display_name.substr(0, display_name.size() - 4);
-                    }
+                    std::string display_name = std::string(strip_txt_extension(deleted_display_list[i]));
                     
-                    std::string file_path = state.recently_deleted_dir + "/" + deleted_display_list[i];
-                    
-                    struct stat file_stat;
+                    const FileEntryCache* cached = find_cached_entry(deleted_file_cache, deleted_display_list[i]);
                     std::string date_str;
-                    if (stat(file_path.c_str(), &file_stat) == 0) {
-                        time_t mod_time = file_stat.st_mtime;
-                        struct tm* time_info = localtime(&mod_time);
-                        char date_buf[32];
-                        strftime(date_buf, sizeof(date_buf), "%m/%d/%y", time_info);
-                        date_str = date_buf;
-                    }
-                    
                     std::string snippet;
-                    std::ifstream file(file_path);
-                    if (file) {
-                        std::string first_line;
-                        std::getline(file, first_line);
-                        file.close();
-                        snippet = first_line;
+                    if (cached) {
+                        date_str = cached->date_str;
+                        snippet = cached->snippet;
                     }
                     
                     struct nk_rect item_bounds;
