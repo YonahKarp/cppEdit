@@ -71,6 +71,101 @@ void scan_txt_files(EditorState& state) {
     state.sidebar.filtered_file_list = state.sidebar.file_list;
 }
 
+void scan_deleted_files(EditorState& state) {
+    state.sidebar.deleted_file_list.clear();
+    DIR* dir = opendir(state.recently_deleted_dir.c_str());
+    if (!dir) return;
+
+    struct dirent* entry;
+    std::vector<std::pair<std::string, time_t>> files_with_times;
+    
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string name = entry->d_name;
+        if (name.size() > 4 && name.substr(name.size() - 4) == ".txt") {
+            std::string full_path = state.recently_deleted_dir + "/" + name;
+            struct stat file_stat;
+            time_t mod_time = 0;
+            if (stat(full_path.c_str(), &file_stat) == 0) {
+                mod_time = file_stat.st_mtime;
+            }
+            files_with_times.push_back({name, mod_time});
+        }
+    }
+    closedir(dir);
+
+    std::sort(files_with_times.begin(), files_with_times.end(),
+              [](const auto& a, const auto& b) { return a.second > b.second; });
+    
+    for (const auto& file : files_with_times) {
+        state.sidebar.deleted_file_list.push_back(file.first);
+    }
+    
+    state.sidebar.filtered_deleted_list = state.sidebar.deleted_file_list;
+}
+
+void cleanup_old_deleted_files(EditorState& state) {
+    DIR* dir = opendir(state.recently_deleted_dir.c_str());
+    if (!dir) return;
+
+    time_t now = time(nullptr);
+    const time_t thirty_days_seconds = 30 * 24 * 60 * 60;
+
+    struct dirent* entry;
+    std::vector<std::string> files_to_delete;
+    
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string name = entry->d_name;
+        if (name.size() > 4 && name.substr(name.size() - 4) == ".txt") {
+            std::string full_path = state.recently_deleted_dir + "/" + name;
+            struct stat file_stat;
+            if (stat(full_path.c_str(), &file_stat) == 0) {
+                if (now - file_stat.st_mtime > thirty_days_seconds) {
+                    files_to_delete.push_back(full_path);
+                }
+            }
+        }
+    }
+    closedir(dir);
+
+    for (const auto& file_path : files_to_delete) {
+        std::remove(file_path.c_str());
+    }
+}
+
+void restore_file(EditorState& state, int deleted_index) {
+    if (deleted_index < 0 || deleted_index >= (int)state.sidebar.filtered_deleted_list.size()) {
+        return;
+    }
+
+    std::string filename = state.sidebar.filtered_deleted_list[deleted_index];
+    std::string src_path = state.recently_deleted_dir + "/" + filename;
+    std::string dest_path = state.user_files_dir + "/" + filename;
+
+    std::ifstream test(dest_path);
+    if (test.good()) {
+        test.close();
+        std::string base = filename.substr(0, filename.size() - 4);
+        int counter = 1;
+        while (true) {
+            dest_path = state.user_files_dir + "/" + base + " (" + std::to_string(counter) + ").txt";
+            std::ifstream check(dest_path);
+            if (!check.good()) {
+                break;
+            }
+            check.close();
+            counter++;
+        }
+    }
+
+    std::rename(src_path.c_str(), dest_path.c_str());
+    
+    scan_txt_files(state);
+    scan_deleted_files(state);
+    filter_sidebar_files(state);
+    
+    switch_to_file(state, dest_path);
+}
+
 void toggle_sidebar(EditorState& state) {
     if (state.sidebar.visible) {
         state.sidebar.anim_closing = true;
@@ -80,6 +175,7 @@ void toggle_sidebar(EditorState& state) {
         state.sidebar.visible = true;
         state.sidebar.anim_closing = false;
         scan_txt_files(state);
+        scan_deleted_files(state);
         state.sidebar.renaming = false;
         state.sidebar.rename_pending = false;
         state.sidebar.searching = false;
@@ -177,12 +273,30 @@ void delete_file(EditorState& state, int file_index) {
 
     std::string filename = state.sidebar.file_list[file_index];
     std::string file_path = state.user_files_dir + "/" + filename;
+    std::string deleted_path = state.recently_deleted_dir + "/" + filename;
 
     std::string previous_path = state.sidebar.previous_file_path;
 
-    std::remove(file_path.c_str());
+    std::ifstream test(deleted_path);
+    if (test.good()) {
+        test.close();
+        std::string base = filename.substr(0, filename.size() - 4);
+        int counter = 1;
+        while (true) {
+            deleted_path = state.recently_deleted_dir + "/" + base + " (" + std::to_string(counter) + ").txt";
+            std::ifstream check(deleted_path);
+            if (!check.good()) {
+                break;
+            }
+            check.close();
+            counter++;
+        }
+    }
+
+    std::rename(file_path.c_str(), deleted_path.c_str());
 
     scan_txt_files(state);
+    scan_deleted_files(state);
 
     if (state.sidebar.file_list.empty()) {
         create_new_file_auto(state);
@@ -355,6 +469,57 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
                 state.sidebar.confirm_delete = false;
                 state.sidebar.delete_index = -1;
                 state.sidebar.previous_file_path.clear();
+            }
+            nk_style_pop_font(ctx);
+        }
+        nk_end(ctx);
+        return true;
+    }
+
+    if (state.sidebar.confirm_restore) {
+        const int dialog_width = 300;
+        const int dialog_height = 120;
+        int dialog_x = (window_width - dialog_width) / 2;
+        int dialog_y = (window_height - dialog_height) / 2;
+
+        static struct nk_style_button restore_style;
+        static struct nk_style_button restore_selected_style;
+        restore_style = cancel_style;
+        restore_style.normal = nk_style_item_color(nk_rgb(60, 100, 60));
+        restore_style.hover = nk_style_item_color(nk_rgb(70, 120, 70));
+        restore_style.active = nk_style_item_color(nk_rgb(80, 140, 80));
+        restore_selected_style = restore_style;
+        restore_selected_style.normal = nk_style_item_color(nk_rgb(80, 140, 80));
+        restore_selected_style.hover = nk_style_item_color(nk_rgb(90, 150, 90));
+        restore_selected_style.border_color = nk_rgb(255, 255, 255);
+        restore_selected_style.border = 2;
+
+        if (nk_begin(ctx, "Restore Confirmation",
+                     nk_rect(dialog_x, dialog_y, dialog_width, dialog_height),
+                     NK_WINDOW_BORDER | NK_WINDOW_NO_SCROLLBAR)) {
+
+            nk_style_push_font(ctx, &sidebar_font->handle);
+            nk_layout_row_dynamic(ctx, 30, 1);
+            nk_label(ctx, "This file was deleted.", NK_TEXT_CENTERED);
+            nk_label(ctx, "Would you like to restore it?", NK_TEXT_CENTERED);
+
+            nk_layout_row_dynamic(ctx, 35, 2);
+
+            struct nk_style_button* yes_btn = (state.sidebar.dialog_selection == 0)
+                                                  ? &restore_selected_style
+                                                  : &restore_style;
+            struct nk_style_button* no_btn = (state.sidebar.dialog_selection == 1)
+                                                 ? &cancel_selected_style
+                                                 : &cancel_style;
+
+            if (nk_button_label_styled(ctx, yes_btn, "Restore")) {
+                restore_file(state, state.sidebar.restore_index);
+                state.sidebar.confirm_restore = false;
+                state.sidebar.restore_index = -1;
+            }
+            if (nk_button_label_styled(ctx, no_btn, "Cancel")) {
+                state.sidebar.confirm_restore = false;
+                state.sidebar.restore_index = -1;
             }
             nk_style_pop_font(ctx);
         }
@@ -545,6 +710,125 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
                 }
             }
             
+            const std::vector<std::string>& deleted_display_list = state.sidebar.searching 
+                ? state.sidebar.filtered_deleted_list 
+                : state.sidebar.deleted_file_list;
+            
+            if (state.sidebar.searching && state.sidebar.search_len > 0 && !deleted_display_list.empty()) {
+                nk_layout_row_dynamic(ctx, 25, 1);
+                struct nk_rect header_bounds;
+                nk_widget(&header_bounds, ctx);
+                struct nk_command_buffer* header_canvas = nk_window_get_canvas(ctx);
+                
+                struct nk_color header_text = theme.sidebar_btn_text;
+                header_text.a = 100;
+                nk_draw_text(header_canvas, nk_rect(header_bounds.x + 10, header_bounds.y + 4, header_bounds.w - 20, small_font->handle.height),
+                            "Recently Deleted", 16, &small_font->handle,
+                            theme.sidebar_btn_normal, header_text);
+                
+                int regular_file_count = (int)display_list.size();
+                
+                for (size_t i = 0; i < deleted_display_list.size(); ++i) {
+                    nk_layout_row_dynamic(ctx, item_height, 1);
+
+                    int adjusted_index = regular_file_count + static_cast<int>(i);
+                    bool is_selected = !state.sidebar.new_file_selected &&
+                                       (adjusted_index == state.sidebar.selected_index);
+
+                    std::string display_name = deleted_display_list[i];
+                    if (display_name.size() > 4 && display_name.substr(display_name.size() - 4) == ".txt") {
+                        display_name = display_name.substr(0, display_name.size() - 4);
+                    }
+                    
+                    std::string file_path = state.recently_deleted_dir + "/" + deleted_display_list[i];
+                    
+                    struct stat file_stat;
+                    std::string date_str;
+                    if (stat(file_path.c_str(), &file_stat) == 0) {
+                        time_t mod_time = file_stat.st_mtime;
+                        struct tm* time_info = localtime(&mod_time);
+                        char date_buf[32];
+                        strftime(date_buf, sizeof(date_buf), "%m/%d/%y", time_info);
+                        date_str = date_buf;
+                    }
+                    
+                    std::string snippet;
+                    std::ifstream file(file_path);
+                    if (file) {
+                        std::string first_line;
+                        std::getline(file, first_line);
+                        file.close();
+                        snippet = first_line;
+                    }
+                    
+                    struct nk_rect item_bounds;
+                    nk_widget(&item_bounds, ctx);
+                    struct nk_command_buffer* canvas = nk_window_get_canvas(ctx);
+                    
+                    struct nk_color bg_color = is_selected ? theme.sidebar_selected_normal : theme.sidebar_btn_normal;
+                    struct nk_input* input_ctx = &ctx->input;
+                    bool hovered = nk_input_is_mouse_hovering_rect(input_ctx, item_bounds);
+                    if (hovered && !is_selected) {
+                        bg_color = theme.sidebar_btn_hover;
+                    }
+                    nk_fill_rect(canvas, item_bounds, 0, bg_color);
+                    
+                    struct nk_color greyed_text = theme.sidebar_btn_text;
+                    greyed_text.a = 100;
+                    
+                    float title_y = item_bounds.y + 8;
+                    nk_draw_text(canvas, nk_rect(item_bounds.x + 10, title_y, item_bounds.w - 20, sidebar_font->handle.height),
+                                display_name.c_str(), display_name.length(), &sidebar_font->handle,
+                                bg_color, greyed_text);
+                    
+                    float subtitle_y = title_y + sidebar_font->handle.height + 4;
+                    struct nk_color subtitle_color = greyed_text;
+                    subtitle_color.a = 70;
+                    
+                    float content_width = item_bounds.w - 20;
+                    float date_width = 65;
+                    float snippet_area_width = content_width - date_width - 10;
+                    
+                    nk_draw_text(canvas, nk_rect(item_bounds.x + 10, subtitle_y, date_width, small_font->handle.height),
+                                date_str.c_str(), date_str.length(), &small_font->handle,
+                                bg_color, subtitle_color);
+                    
+                    if (!snippet.empty()) {
+                        float snippet_text_width = small_font->handle.width(small_font->handle.userdata, small_font->handle.height, snippet.c_str(), snippet.length());
+                        float snippet_area_x = item_bounds.x + 10 + date_width + 10;
+                        
+                        std::string display_snippet = snippet;
+                        if (snippet_text_width > snippet_area_width) {
+                            std::string ellipsis = "...";
+                            float ellipsis_width = small_font->handle.width(small_font->handle.userdata, small_font->handle.height, ellipsis.c_str(), ellipsis.length());
+                            float available_width = snippet_area_width - ellipsis_width;
+                            
+                            size_t fit_chars = 0;
+                            float current_width = 0;
+                            for (size_t j = 0; j < snippet.length(); ++j) {
+                                float char_width = small_font->handle.width(small_font->handle.userdata, small_font->handle.height, snippet.c_str() + j, 1);
+                                if (current_width + char_width > available_width) break;
+                                current_width += char_width;
+                                fit_chars = j + 1;
+                            }
+                            display_snippet = snippet.substr(0, fit_chars) + ellipsis;
+                            snippet_text_width = small_font->handle.width(small_font->handle.userdata, small_font->handle.height, display_snippet.c_str(), display_snippet.length());
+                        }
+                        
+                        float snippet_x = snippet_area_x + snippet_area_width - snippet_text_width;
+                        if (snippet_x < snippet_area_x) snippet_x = snippet_area_x;
+                        nk_draw_text(canvas, nk_rect(snippet_x, subtitle_y, snippet_text_width, small_font->handle.height),
+                                    display_snippet.c_str(), display_snippet.length(), &small_font->handle,
+                                    bg_color, subtitle_color);
+                    }
+                    
+                    if (hovered && nk_input_is_mouse_pressed(input_ctx, NK_BUTTON_LEFT)) {
+                        state.sidebar.selected_index = adjusted_index;
+                        state.sidebar.new_file_selected = false;
+                    }
+                }
+            }
+            
             nk_style_pop_font(ctx);
             nk_group_scrolled_end(ctx);
             state.sidebar.scroll_offset = y_offset;
@@ -556,10 +840,15 @@ bool render_sidebar(struct nk_context* ctx, EditorState& state,
 }
 
 void handle_sidebar_input(EditorState& state, SDL_Event* event) {
-    if (!state.sidebar.visible || state.sidebar.confirm_delete) return;
+    if (!state.sidebar.visible || state.sidebar.confirm_delete || state.sidebar.confirm_restore) return;
     if (state.sidebar.new_file_selected) return;
+    
+    int regular_count = state.sidebar.searching 
+        ? (int)state.sidebar.filtered_file_list.size() 
+        : (int)state.sidebar.file_list.size();
+    
     if (state.sidebar.selected_index < 0 || 
-        state.sidebar.selected_index >= (int)state.sidebar.file_list.size()) return;
+        state.sidebar.selected_index >= regular_count) return;
 
     if (event->type == SDL_TEXTINPUT) {
         char c = event->text.text[0];
@@ -631,6 +920,40 @@ void handle_sidebar_keyboard(EditorState& state, const InputState& input) {
         return;
     }
 
+    if (state.sidebar.confirm_restore) {
+        if (input.escape) {
+            state.sidebar.confirm_restore = false;
+            state.sidebar.restore_index = -1;
+        }
+        if (input.left) {
+            state.sidebar.dialog_selection = 0;
+        }
+        if (input.right) {
+            state.sidebar.dialog_selection = 1;
+        }
+        if (input.enter) {
+            if (state.sidebar.dialog_selection == 0) {
+                restore_file(state, state.sidebar.restore_index);
+                state.sidebar.visible = false;
+            }
+            state.sidebar.confirm_restore = false;
+            state.sidebar.restore_index = -1;
+        }
+        return;
+    }
+
+    const std::vector<std::string>& display_list = state.sidebar.searching 
+        ? state.sidebar.filtered_file_list 
+        : state.sidebar.file_list;
+    
+    const std::vector<std::string>& deleted_display_list = state.sidebar.searching 
+        ? state.sidebar.filtered_deleted_list 
+        : state.sidebar.deleted_file_list;
+    
+    int regular_count = (int)display_list.size();
+    int deleted_count = state.sidebar.searching ? (int)deleted_display_list.size() : 0;
+    int total_count = regular_count + deleted_count;
+
     if (input.up) {
         if (state.sidebar.renaming) {
             state.sidebar.renaming = false;
@@ -639,12 +962,17 @@ void handle_sidebar_keyboard(EditorState& state, const InputState& input) {
         if (state.sidebar.new_file_selected) {
             // Already at top, do nothing
         } else if (state.sidebar.selected_index == 0) {
-            state.sidebar.new_file_selected = true;
-            state.sidebar.scroll_offset = 0;
+            if (!state.sidebar.searching) {
+                state.sidebar.new_file_selected = true;
+                state.sidebar.scroll_offset = 0;
+            }
         } else if (state.sidebar.selected_index > 0) {
             state.sidebar.selected_index--;
-            int row_height = state.sidebar.item_height + 4; // item + spacing
+            int row_height = state.sidebar.item_height + 4;
             int item_top = state.sidebar.selected_index * row_height;
+            if (state.sidebar.selected_index >= regular_count && deleted_count > 0) {
+                item_top += 25;
+            }
             if (item_top < (int)state.sidebar.scroll_offset) {
                 state.sidebar.scroll_offset = item_top;
             }
@@ -657,18 +985,17 @@ void handle_sidebar_keyboard(EditorState& state, const InputState& input) {
             state.sidebar.rename_pending = false;
         }
         
-        const std::vector<std::string>& display_list = state.sidebar.searching 
-            ? state.sidebar.filtered_file_list 
-            : state.sidebar.file_list;
-            
         if (state.sidebar.new_file_selected) {
             state.sidebar.new_file_selected = false;
             state.sidebar.selected_index = 0;
             state.sidebar.scroll_offset = 0;
-        } else if (state.sidebar.selected_index < (int)display_list.size() - 1) {
+        } else if (state.sidebar.selected_index < total_count - 1) {
             state.sidebar.selected_index++;
-            int row_height = state.sidebar.item_height + 4; // item + spacing
+            int row_height = state.sidebar.item_height + 4;
             int item_bottom = (state.sidebar.selected_index + 1) * row_height;
+            if (state.sidebar.selected_index >= regular_count && deleted_count > 0) {
+                item_bottom += 25;
+            }
             int visible_bottom = state.sidebar.scroll_offset + state.sidebar.visible_height;
             if (item_bottom > visible_bottom) {
                 state.sidebar.scroll_offset = item_bottom - state.sidebar.visible_height + 8;
@@ -680,21 +1007,28 @@ void handle_sidebar_keyboard(EditorState& state, const InputState& input) {
         if (state.sidebar.renaming) {
             state.sidebar.renaming = false;
             state.sidebar.rename_pending = false;
+        } else if (state.sidebar.searching) {
+            state.sidebar.searching = false;
+            state.sidebar.search_buffer[0] = '\0';
+            state.sidebar.search_len = 0;
+            filter_sidebar_files(state);
         } else {
             state.sidebar.visible = false;
         }
     }
 
-    if (input.delete_key && !state.sidebar.new_file_selected) {
-        state.sidebar.confirm_delete = true;
-        state.sidebar.delete_index = state.sidebar.selected_index;
-        state.sidebar.dialog_selection = 1;
-        state.sidebar.previous_file_path = state.current_file_path;
+    if (input.delete_key && !state.sidebar.new_file_selected && !state.sidebar.searching) {
+        if (state.sidebar.selected_index >= 0 && state.sidebar.selected_index < regular_count) {
+            state.sidebar.confirm_delete = true;
+            state.sidebar.delete_index = state.sidebar.selected_index;
+            state.sidebar.dialog_selection = 1;
+            state.sidebar.previous_file_path = state.current_file_path;
 
-        std::string file_to_delete = state.sidebar.file_list[state.sidebar.selected_index];
-        std::string delete_path = state.user_files_dir + "/" + file_to_delete;
-        if (delete_path != state.current_file_path) {
-            switch_to_file(state, delete_path);
+            std::string file_to_delete = state.sidebar.file_list[state.sidebar.selected_index];
+            std::string delete_path = state.user_files_dir + "/" + file_to_delete;
+            if (delete_path != state.current_file_path) {
+                switch_to_file(state, delete_path);
+            }
         }
     }
 
@@ -706,10 +1040,12 @@ void handle_sidebar_keyboard(EditorState& state, const InputState& input) {
         if (state.sidebar.new_file_selected) {
             create_new_file_auto(state);
             state.sidebar.visible = false;
+        } else if (state.sidebar.selected_index >= regular_count && state.sidebar.searching) {
+            int deleted_index = state.sidebar.selected_index - regular_count;
+            state.sidebar.confirm_restore = true;
+            state.sidebar.restore_index = deleted_index;
+            state.sidebar.dialog_selection = 0;
         } else {
-            const std::vector<std::string>& display_list = state.sidebar.searching 
-                ? state.sidebar.filtered_file_list 
-                : state.sidebar.file_list;
                 
             if (!display_list.empty() && state.sidebar.selected_index < (int)display_list.size()) {
                 std::string selected_file = display_list[state.sidebar.selected_index];
@@ -745,11 +1081,18 @@ static bool case_insensitive_contains(const std::string& str, const std::string&
 
 void filter_sidebar_files(EditorState& state) {
     state.sidebar.filtered_file_list.clear();
+    state.sidebar.filtered_deleted_list.clear();
     std::string query(state.sidebar.search_buffer, state.sidebar.search_len);
     
     for (const auto& filename : state.sidebar.file_list) {
         if (case_insensitive_contains(filename, query)) {
             state.sidebar.filtered_file_list.push_back(filename);
+        }
+    }
+    
+    for (const auto& filename : state.sidebar.deleted_file_list) {
+        if (case_insensitive_contains(filename, query)) {
+            state.sidebar.filtered_deleted_list.push_back(filename);
         }
     }
     

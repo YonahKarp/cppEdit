@@ -66,6 +66,7 @@ struct EditorState {
     SidebarState sidebar;
     SearchState search;
     std::string user_files_dir;
+    std::string recently_deleted_dir;
 
     float font_size = 30.0f;
     bool dark_theme = true;

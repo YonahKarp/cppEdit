@@ -79,6 +79,7 @@ int main(int argc, char** argv) {
     }
 
     const char* user_files_dir = "../user_files";
+     const char* recently_deleted_dir = "../user_files/recently_deleted";
     const char* state_file_path = "../user_files/.editor_state";
     const char* default_file_path = "../user_files/file 1.txt";
 
@@ -91,8 +92,19 @@ int main(int argc, char** argv) {
         #endif
     }
 
+    if (stat(recently_deleted_dir, &st) != 0) {
+        #ifdef _WIN32
+        mkdir(recently_deleted_dir);
+        #else
+        mkdir(recently_deleted_dir, 0755);
+        #endif
+    }
+
     EditorState editor;
     load_editor_state(editor, app, state_file_path, default_file_path, user_files_dir);
+    editor.recently_deleted_dir = recently_deleted_dir;
+    
+    cleanup_old_deleted_files(editor);
 
     const Uint32 DEBOUNCE_DELAY = 500;
     const Uint32 RENAME_DEBOUNCE_DELAY = 200;

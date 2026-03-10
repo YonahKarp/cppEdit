@@ -12,6 +12,8 @@ struct SidebarState {
     bool visible = false;
     std::vector<std::string> file_list;
     std::vector<std::string> filtered_file_list;
+    std::vector<std::string> deleted_file_list;
+    std::vector<std::string> filtered_deleted_list;
     int selected_index = 0;
     bool new_file_selected = false;
     bool confirm_delete = false;
@@ -19,6 +21,9 @@ struct SidebarState {
     int dialog_selection = 1;  // 0 = Delete, 1 = Cancel (default)
     std::string previous_file_path;  // File to revert to after delete/cancel
 
+    bool confirm_restore = false;
+    int restore_index = -1;
+    
     bool renaming = false;
     char rename_buffer[256] = "";
     int rename_len = 0;
@@ -67,3 +72,9 @@ void process_rename_save(EditorState& state, Uint32 debounce_delay);
 void filter_sidebar_files(EditorState& state);
 
 void toggle_sidebar_search(EditorState& state);
+
+void scan_deleted_files(EditorState& state);
+
+void cleanup_old_deleted_files(EditorState& state);
+
+void restore_file(EditorState& state, int deleted_index);
