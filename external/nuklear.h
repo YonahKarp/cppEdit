@@ -5398,6 +5398,8 @@ struct nk_edit_state {
     struct nk_scroll scrollbar;
     unsigned char mode;
     unsigned char single_line;
+    unsigned char has_preferred_x;
+    float preferred_x;
 };
 
 struct nk_property_state {
@@ -22335,6 +22337,11 @@ retry:
             if (sel)
                 state->select_end = state->cursor;
         }
+        /* preserve preferred_x when on empty line (find.length == 0) */
+        else if (!state->has_preferred_x) {
+            state->has_preferred_x = 1;
+            state->preferred_x = find.x;
+        }
     } break;
 
     case NK_KEY_UP: {
@@ -22397,6 +22404,11 @@ retry:
             state->has_preferred_x = 1;
             state->preferred_x = goal_x;
             if (sel) state->select_end = state->cursor;
+         }
+         /* preserve preferred_x when on empty line */
+         else if (!state->has_preferred_x) {
+            state->has_preferred_x = 1;
+            state->preferred_x = find.x;
          }
       } break;
 
@@ -23701,6 +23713,8 @@ nk_edit_string(struct nk_context *ctx, nk_flags flags,
         edit->mode = win->edit.mode;
         edit->scrollbar.x = (float)win->edit.scrollbar.x;
         edit->scrollbar.y = (float)win->edit.scrollbar.y;
+        edit->has_preferred_x = win->edit.has_preferred_x;
+        edit->preferred_x = win->edit.preferred_x;
         edit->active = nk_true;
     } else edit->active = nk_false;
 
@@ -23719,6 +23733,8 @@ nk_edit_string(struct nk_context *ctx, nk_flags flags,
         win->edit.mode = edit->mode;
         win->edit.scrollbar.x = (nk_uint)edit->scrollbar.x;
         win->edit.scrollbar.y = (nk_uint)edit->scrollbar.y;
+        win->edit.has_preferred_x = edit->has_preferred_x;
+        win->edit.preferred_x = edit->preferred_x;
     } return state;
 }
 NK_API struct nk_vec2

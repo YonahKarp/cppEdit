@@ -18,7 +18,7 @@ struct App {
     int window_height = 600;
 
     float font_size = 30.0f;
-    static constexpr float MIN_FONT_SIZE = 16.0f;
+    static constexpr float MIN_FONT_SIZE = 20.0f;
     static constexpr float MAX_FONT_SIZE = 54.0f;
     static constexpr float FONT_SIZE_STEP = 2.0f;
     static constexpr float SIDEBAR_FONT_SIZE = 24.0f;
