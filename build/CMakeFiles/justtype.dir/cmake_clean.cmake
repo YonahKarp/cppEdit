@@ -11,6 +11,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/justtype.dir/src/main.cpp.o.d"
   "CMakeFiles/justtype.dir/src/search.cpp.o"
   "CMakeFiles/justtype.dir/src/search.cpp.o.d"
+  "CMakeFiles/justtype.dir/src/shortcuts.cpp.o"
+  "CMakeFiles/justtype.dir/src/shortcuts.cpp.o.d"
   "CMakeFiles/justtype.dir/src/sidebar.cpp.o"
   "CMakeFiles/justtype.dir/src/sidebar.cpp.o.d"
   "justtype"

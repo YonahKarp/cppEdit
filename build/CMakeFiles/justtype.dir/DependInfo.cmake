@@ -14,6 +14,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/Users/yonah/xdev/justype/src/input.cpp" "CMakeFiles/justtype.dir/src/input.cpp.o" "gcc" "CMakeFiles/justtype.dir/src/input.cpp.o.d"
   "/Users/yonah/xdev/justype/src/main.cpp" "CMakeFiles/justtype.dir/src/main.cpp.o" "gcc" "CMakeFiles/justtype.dir/src/main.cpp.o.d"
   "/Users/yonah/xdev/justype/src/search.cpp" "CMakeFiles/justtype.dir/src/search.cpp.o" "gcc" "CMakeFiles/justtype.dir/src/search.cpp.o.d"
+  "/Users/yonah/xdev/justype/src/shortcuts.cpp" "CMakeFiles/justtype.dir/src/shortcuts.cpp.o" "gcc" "CMakeFiles/justtype.dir/src/shortcuts.cpp.o.d"
   "/Users/yonah/xdev/justype/src/sidebar.cpp" "CMakeFiles/justtype.dir/src/sidebar.cpp.o" "gcc" "CMakeFiles/justtype.dir/src/sidebar.cpp.o.d"
   )
 

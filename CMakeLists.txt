@@ -12,7 +12,8 @@ add_executable(justtype
     src/sidebar.cpp
     src/input.cpp
     src/search.cpp
-    src/icons.cpp)
+    src/icons.cpp
+    src/shortcuts.cpp)
 
 target_include_directories(justtype PRIVATE
     external

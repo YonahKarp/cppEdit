@@ -273,6 +273,30 @@ src/search.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/justtype.dir/build.make CMakeFiles/justtype.dir/src/search.cpp.s
 .PHONY : src/search.cpp.s
 
+src/shortcuts.o: src/shortcuts.cpp.o
+.PHONY : src/shortcuts.o
+
+# target to build an object file
+src/shortcuts.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/justtype.dir/build.make CMakeFiles/justtype.dir/src/shortcuts.cpp.o
+.PHONY : src/shortcuts.cpp.o
+
+src/shortcuts.i: src/shortcuts.cpp.i
+.PHONY : src/shortcuts.i
+
+# target to preprocess a source file
+src/shortcuts.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/justtype.dir/build.make CMakeFiles/justtype.dir/src/shortcuts.cpp.i
+.PHONY : src/shortcuts.cpp.i
+
+src/shortcuts.s: src/shortcuts.cpp.s
+.PHONY : src/shortcuts.s
+
+# target to generate assembly for a file
+src/shortcuts.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/justtype.dir/build.make CMakeFiles/justtype.dir/src/shortcuts.cpp.s
+.PHONY : src/shortcuts.cpp.s
+
 src/sidebar.o: src/sidebar.cpp.o
 .PHONY : src/sidebar.o
 
@@ -324,6 +348,9 @@ help:
 	@echo "... src/search.o"
 	@echo "... src/search.i"
 	@echo "... src/search.s"
+	@echo "... src/shortcuts.o"
+	@echo "... src/shortcuts.i"
+	@echo "... src/shortcuts.s"
 	@echo "... src/sidebar.o"
 	@echo "... src/sidebar.i"
 	@echo "... src/sidebar.s"
