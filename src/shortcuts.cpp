@@ -21,7 +21,6 @@ ___________________________________________________
   Ctrl+C                      Copy selected text
   Ctrl+X                      Cut selected text
   Ctrl+V                      Paste text
-  Ctrl+Shift+Alt+Esc  Quit application
 
 NAVIGATION
 ___________________________________________________
