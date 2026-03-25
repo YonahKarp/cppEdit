@@ -42,6 +42,8 @@
   <tr>
     <td valign="top">
       <img src="assets/Video.gif" alt="JustType writing flow demo" width="300" />
+      <br />
+      <img src="assets/Video2.gif" alt="JustType writing flow demo 2" width="300" style="margin-top:8px;" />
     </td>
     <td valign="top">
       <ul>
