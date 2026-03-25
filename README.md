@@ -2,8 +2,8 @@
 
 <table>
   <tr>
-    <td valign="top">
-      <img src="assets/device.png" alt="Leaf device" width="300" />
+    <td valign="top" width="320">
+      <img src="assets/device.png" alt="Leaf device" width="300" style="width:300px; min-width:300px; max-width:300px; height:auto; display:block;" />
     </td>
     <td valign="top">
       <p>I built this as a birthday gift for my daughter.</p>
@@ -41,7 +41,7 @@
 <table>
   <tr>
     <td valign="top">
-      <video src="assets/Video.mov" width="300" controls muted playsinline></video>
+      <img src="assets/Video.gif" alt="JustType writing flow demo" width="300" />
     </td>
     <td valign="top">
       <ul>
