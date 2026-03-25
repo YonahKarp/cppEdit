@@ -90,11 +90,6 @@ The app expects these paths relative to the executable:
 - `../fonts/OpenSans-Regular.ttf`
 - `../user_files/`
 
-## Notes on File Transfer
-
-For the Pi prototype, files are currently moved off-device over SSH.  
-A QR-based export flow is in progress.
-
 ## Project Direction
 
 The Pi prototype validated the core idea: fast access to writing, no distractions.
@@ -109,6 +104,7 @@ The current product-design direction moves away from Linux toward an MCU-based s
 - Lid-open wake, lid-close sleep
 - USB-C and/or multi-QR transfer
 - Target boot/wake under 3 seconds
+- Target market price of under $100
 
 ### Software (LVGL)
 
@@ -121,5 +117,5 @@ The current product-design direction moves away from Linux toward an MCU-based s
 
 This started as a one-off gift, but it exposed a gap: a focused writing device that is actually affordable.
 
-The goal is still simple: open it and write. Follow our journey at 
+Follow our journey at 
 [justtypeleaf.com/journey](https://justtypeleaf.com/journey?entry=home)
