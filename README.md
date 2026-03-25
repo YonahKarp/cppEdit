@@ -7,11 +7,11 @@
     </td>
     <td valign="top">
       <p>I built this as a birthday gift for my daughter.</p>
-      <p>She had started writing stories and learning to type, and I wanted to support that without giving her a full laptop full of distractions. Most dedicated writing devices I found were around $500, so I built a simple one myself for about $70 in parts: keyboard, screen, battery, and a single-purpose writing app.</p>
+      <p>She had started writing stories and learning to type, and I wanted to support that without giving her a laptop full of distractions.Weverything on the market is more than I wanted to spend (~$500), so I built a simple one myself for about $70 in parts: keyboard, screen, battery, and a single-purpose writing app.</p>
       <p>This repository is the writing software used on the Raspberry Pi prototype.</p>
-      <p>If you want the full build story and prototype timeline, start here:<br />
+      <p>If you want the build story and prototype timeline, start here:<br />
       <a href="https://justtypeleaf.com/journey?entry=home">justtypeleaf.com/journey</a></p>
-      <p>If you want the printable prototype case files, start here:<br />
+      <p>If you want the 3D printable prototype case files, start here:<br />
       <a href="https://justtypeleaf.com/prototype-files?entry=home">justtypeleaf.com/prototype-files</a></p>
     </td>
   </tr>
@@ -27,7 +27,7 @@
     <td valign="top">
       <ul>
         <li>Raspberry Pi Zero 2W</li>
-        <li>7" 1024x600 display (buyDisplay)</li>
+        <li>7" 1024x600 display</li>
         <li>Slim wired keyboard</li>
         <li>10,000mAh power bank</li>
         <li>3D printed enclosure</li>
@@ -113,9 +113,6 @@ The current product-design direction moves away from Linux toward an MCU-based s
 - QR export flow for file transfer
 - Simple spellcheck for writing assistance
 
-## Why This Exists
 
-This started as a one-off gift, but it exposed a gap: a focused writing device that is actually affordable.
-
-Follow our journey at 
+Follow the journey at 
 [justtypeleaf.com/journey](https://justtypeleaf.com/journey?entry=home)
