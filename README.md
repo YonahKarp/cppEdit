@@ -7,7 +7,7 @@
     </td>
     <td valign="top">
       <p>I built this as a birthday gift for my daughter.</p>
-      <p>She had started writing stories and learning to type, and I wanted to support that without giving her a laptop full of distractions.Weverything on the market is more than I wanted to spend (~$500), so I built a simple one myself for about $70 in parts: keyboard, screen, battery, and a single-purpose writing app.</p>
+      <p>She had started writing stories and learning to type, and I wanted to support that without giving her a laptop full of distractions. Everything on the market was more than I wanted to spend (~$500), so I built a simple one myself for about $70 in parts: keyboard, screen, battery, and a single-purpose writing app.</p>
       <p>This repository is the writing software used on the Raspberry Pi prototype.</p>
       <p>If you want the build story and prototype timeline, start here:<br />
       <a href="https://justtypeleaf.com/journey?entry=home">justtypeleaf.com/journey</a></p>
