@@ -1,63 +1,42 @@
 # JustType (Prototype Software)
 
-<table>
-  <tr>
-    <td valign="top" width="320">
-      <img src="assets/device.png" alt="Leaf device" width="300" style="width:300px; min-width:300px; max-width:300px; height:auto; display:block;" />
-    </td>
-    <td valign="top">
-      <p>I built this as a birthday gift for my daughter.</p>
-      <p>She had started writing stories and learning to type, and I wanted to support that without giving her a laptop full of distractions. Everything on the market was more than I wanted to spend (~$500), so I built a simple one myself for about $70 in parts: keyboard, screen, battery, and a single-purpose writing app.</p>
-      <p>This repository is the writing software used on the Raspberry Pi prototype.</p>
-      <p>If you want the build story and prototype timeline, start here:<br />
-      <a href="https://justtypeleaf.com/journey?entry=home">justtypeleaf.com/journey</a></p>
-      <p>If you want the 3D printable prototype case files, start here:<br />
-      <a href="https://justtypeleaf.com/prototype-files?entry=home">justtypeleaf.com/prototype-files</a></p>
-    </td>
-  </tr>
-</table>
+<img src="assets/device.png" alt="Leaf device" width="300" />
+
+I built this as a birthday gift for my daughter.
+
+She had started writing stories and learning to type, and I wanted to support that without giving her a laptop full of distractions. Everything on the market was more than I wanted to spend (~$500), so I built a simple one myself for about $70 in parts: keyboard, screen, battery, and a single-purpose writing app.
+
+This repository is the writing software used on the Raspberry Pi prototype.
+
+If you want the build story and prototype timeline, start here:  
+[justtypeleaf.com/journey](https://justtypeleaf.com/journey?entry=home)
+
+If you want the 3D printable prototype case files, start here:  
+[justtypeleaf.com/prototype-files](https://justtypeleaf.com/prototype-files?entry=home)
 
 ## Current Prototype Hardware
 
-<table>
-  <tr>
-    <td valign="top">
-      <img src="assets/inside.png" alt="Leaf device inside" width="150" />
-    </td>
-    <td valign="top">
-      <ul>
-        <li>Raspberry Pi Zero 2W</li>
-        <li>7" 1024x600 display</li>
-        <li>Slim wired keyboard</li>
-        <li>10,000mAh power bank</li>
-        <li>3D printed enclosure</li>
-      </ul>
-    </td>
-  </tr>
-</table>
+<img src="assets/inside.png" alt="Leaf device inside" width="220" />
+
+- Raspberry Pi Zero 2W
+- 7" 1024x600 display
+- Slim wired keyboard
+- 10,000mAh power bank
+- 3D printed enclosure
 
 ## What This Software Does
 
-<table>
-  <tr>
-    <td valign="top">
-      <img src="assets/Video.gif" alt="JustType writing flow demo" width="300" />
-      <br />
-      <img src="assets/Video2.gif" alt="JustType writing flow demo 2" width="300" style="margin-top:8px;" />
-    </td>
-    <td valign="top">
-      <ul>
-        <li>Launches straight into a writing interface (no desktop workflow)</li>
-        <li>Auto-saves edits using a debounce timer: changes are buffered in memory, then flushed to disk after a short idle window to reduce write frequency while keeping data loss risk low</li>
-        <li>Stores all files as plain text in the local <code>user_files/</code> folder</li>
-        <li>Remembers editor state so the user can pick up where they left off</li>
-        <li>Includes a file sidebar, in-editor search, and keyboard-first controls</li>
-        <li>Includes built-in keyboard shortcuts focused on writing flow (for example: <code>Ctrl+Up</code> / <code>Ctrl+Down</code> paragraph jump, <code>Shift+Arrow</code> selection, <code>Ctrl+Backspace</code> delete previous word)</li>
-        <li>Supports dark/light theme toggle and font size adjustment</li>
-      </ul>
-    </td>
-  </tr>
-</table>
+- Launches straight into a writing interface (no desktop workflow)
+- Auto-saves edits using a debounce timer: changes are buffered in memory, then flushed to disk after a short idle window to reduce write frequency while keeping data loss risk low
+- Stores all files as plain text in the local `user_files/` folder
+- Remembers editor state so the user can pick up where they left off
+- Includes a file sidebar, in-editor search, and keyboard-first controls
+- Includes built-in keyboard shortcuts focused on writing flow (for example: `Ctrl+Up` / `Ctrl+Down` paragraph jump, `Shift+Arrow` selection, `Ctrl+Backspace` delete previous word)
+- Supports dark/light theme toggle and font size adjustment
+
+<img src="assets/Video.gif" alt="JustType writing flow demo" width="300" />
+
+<img src="assets/Video2.gif" alt="JustType writing flow demo 2" width="300" />
 
 The app is intentionally focused and minimal.
 
