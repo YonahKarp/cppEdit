@@ -14,24 +14,13 @@ If you want the build story and prototype timeline, start here:
 If you want the 3D printable prototype case files, start here:  
 [justtypeleaf.com/prototype-files](https://justtypeleaf.com/prototype-files?entry=home)
 
-## Current Prototype Hardware
+## Features
 
-<img src="assets/inside.png" alt="Leaf device inside" width="220" />
-
-- Raspberry Pi Zero 2W
-- 7" 1024x600 display
-- Slim wired keyboard
-- 10,000mAh power bank
-- 3D printed enclosure
-
-## What This Software Does
-
-- Launches straight into a writing interface (no desktop workflow)
+- Boots straight into a writing interface
 - Auto-saves edits using a debounce timer: changes are buffered in memory, then flushed to disk after a short idle window to reduce write frequency while keeping data loss risk low
-- Stores all files as plain text in the local `user_files/` folder
 - Remembers editor state so the user can pick up where they left off
 - Includes a file sidebar, in-editor search, and keyboard-first controls
-- Includes built-in keyboard shortcuts focused on writing flow (for example: `Ctrl+Up` / `Ctrl+Down` paragraph jump, `Shift+Arrow` selection, `Ctrl+Backspace` delete previous word)
+- Built-in keyboard shortcuts focused on writing flow (for example: `Ctrl+Up` / `Ctrl+Down` paragraph jump, `Shift+Arrow` selection, `Ctrl+Backspace` delete previous word)
 - Supports dark/light theme toggle and font size adjustment
 
 <img src="assets/Video.gif" alt="JustType writing flow demo" width="300" />
@@ -39,6 +28,18 @@ If you want the 3D printable prototype case files, start here:
 <img src="assets/Video2.gif" alt="JustType writing flow demo 2" width="300" />
 
 The app is intentionally focused and minimal.
+
+## Prototype Hardware
+
+<img src="assets/inside.png" alt="Leaf device inside" width="220" />
+
+- Raspberry Pi Zero 2W
+- 7" 1024x600 display
+- Slim wired keyboard
+- 10,000mAh power bank
+- [3D printed enclosure](https://justtypeleaf.com/prototype-files?entry=home)
+
+
 
 ## Build
 
