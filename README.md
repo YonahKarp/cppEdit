@@ -14,6 +14,9 @@ If you want the build story and prototype timeline, start here:
 If you want the 3D printable prototype case files, start here:  
 [justtypeleaf.com/prototype-files](https://justtypeleaf.com/prototype-files?entry=home)
 
+To view the updated LVGL version of this application see  here:
+github.com/YonahKarp/cppEditLVGL
+
 ## Features
 
 - Boots straight into a writing interface
@@ -88,7 +91,7 @@ The current product-design direction moves away from Linux toward an MCU-based s
 
 ### Software (LVGL)
 
-- New LVGL-based writing interface
+- [New LVGL-based writing interface](https://github.com/YonahKarp/cppEditLVGL)
 - Folder support for organizing files
 - QR export flow for file transfer
 - Simple spellcheck for writing assistance
