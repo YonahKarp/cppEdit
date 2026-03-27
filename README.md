@@ -14,8 +14,7 @@ If you want the build story and prototype timeline, start here:
 If you want the 3D printable prototype case files, start here:  
 [justtypeleaf.com/prototype-files](https://justtypeleaf.com/prototype-files?entry=home)
 
-To view the updated LVGL version of this application see  here:
-github.com/YonahKarp/cppEditLVGL
+To view the updated LVGL version of this application see [here](https://github.com/YonahKarp/cppEditLVGL)
 
 ## Features
 
